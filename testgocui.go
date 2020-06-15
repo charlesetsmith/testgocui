@@ -258,13 +258,11 @@ func layout(g *gocui.Gui) error {
 	var cmd *gocui.View
 	var msg *gocui.View
 
-	ratio := 4 // Ratio of cmd to err views
-	maxX, maxY := g.Size()
-	MaxX = maxX
-	MaxY = maxY
+	ratio := 4            // Ratio of cmd to err views
+	MaxX, MaxY = g.Size() // Set the MaxX and MaxY to current size
 	// This is the command line input view -- cli inputs and return messages go here
-	if cmd, err = g.SetView("cmd", 0, maxY-(maxY/ratio)+1, maxX-1, maxY-1); err != nil {
-		CmdLines = (maxY / ratio) - 3 // Number of input lines in cmd view
+	if cmd, err = g.SetView("cmd", 0, MaxY-(MaxY/ratio)+1, MaxX-1, MaxY-1); err != nil {
+		CmdLines = (MaxY / ratio) - 3 // Number of input lines in cmd view
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -277,7 +275,7 @@ func layout(g *gocui.Gui) error {
 		cmd.Wrap = true
 	}
 	// This is the message view window - All sorts of status & error messages go here
-	if msg, err = g.SetView("msg", 0, 0, maxX-1, maxY-maxY/ratio); err != nil {
+	if msg, err = g.SetView("msg", 0, 0, MaxX-1, MaxY-MaxY/ratio); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
