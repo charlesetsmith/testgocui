@@ -10,7 +10,7 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-// Cinfo -- Used in the "ls" command
+// Cinfo -- Used in the "ls" command - WHICH CURRENTLY DUMPS CORE!!!! FIX IT!!!!!
 var Cinfo *screen.Viewinfo
 
 // All of the different command line input handlers
@@ -53,7 +53,7 @@ var cmdhandler = map[string]cmdfunc{
 	"ca":   cmda,
 	"cb":   cmdb,
 	"cc":   cmdc,
-	"ls":   ls,
+	"ls":   ls, // THIS CURRENTLY DUMPS CORE!!!!! FIX IT!!!!
 	"quit": exit,
 }
 
