@@ -170,6 +170,7 @@ func getLine(g *gocui.Gui, v *gocui.View) error {
 		log.Fatal("\nGocui Exit. Bye!", err)
 	}
 
+	// Bump the number of the current line
 	Cinfo.Curline++
 	// Our new x position will always be after the prompt + 3 for []: chars
 	xpos := promptlen(Cinfo)
