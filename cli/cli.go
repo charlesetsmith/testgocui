@@ -38,9 +38,9 @@ func cmdc(g *gocui.Gui, args []string, cmds Viewinfo) {
 
 func ls(g *gocui.Gui, args []string, cmds Viewinfo) {
 
-	s := fmt.Sprintf("Number Commands=%d\n", len(cmds.Commands))
+	var s string
 	for c := range cmds.Commands {
-		s += fmt.Sprintf("Commands=%s\n", cmds.Commands[c])
+		s += fmt.Sprintf("%d=%s\n", c, cmds.Commands[c])
 	}
 	screen.Fprintln(g, "msg", "cyan_black", s)
 }
