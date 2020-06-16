@@ -10,32 +10,47 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-// Viewinfo - Command history
+// Viewinfo - Previos Command history, prompt info
 type Viewinfo struct {
 	Commands []string
 	Prompt   string
 	Ppad     int // Number of pad characters around prompt e.g. prompt[99]: would be 3
-	Curline  int
-	Numlines int
+	Curline  int // What is the current command line # we are on
+	// Numlines int
 }
 
-// Cinfo -- Used in the "ls" command - WHICH CURRENTLY DUMPS CORE!!!! FIX IT!!!!!
-// var Cinfo *Viewinfo
+type cmdfunc func(*gocui.Gui, []string, Viewinfo)
 
-// All of the different command line input handlers
+// Cmdhandler - Commands and function pointers to handle them
+var Cmdhandler = map[string]cmdfunc{
+	"ca":    cmda,
+	"cb":    cmdb,
+	"cc":    cmdc,
+	"ls":    ls,
+	"quit":  exit,
+	"exit":  exit,
+	"help":  usage,
+	"usage": usage,
+}
 
+// The different command line input handlers
+
+// cmda [args]...
 func cmda(g *gocui.Gui, args []string, cmds Viewinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command A", args)
 }
 
+// cmdb [args]...
 func cmdb(g *gocui.Gui, args []string, cmds Viewinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command B", args)
 }
 
+// cmdc [args]...
 func cmdc(g *gocui.Gui, args []string, cmds Viewinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command B", args)
 }
 
+// ls - list the history of commands to the msg window
 func ls(g *gocui.Gui, args []string, cmds Viewinfo) {
 
 	var s string
@@ -53,18 +68,26 @@ func exit(g *gocui.Gui, args []string, cmds Viewinfo) {
 	}
 }
 
-/* ************************************************************************** */
-
-type cmdfunc func(*gocui.Gui, []string, Viewinfo)
-
-// Commands and function pointers to handle them
-var cmdhandler = map[string]cmdfunc{
-	"ca":   cmda,
-	"cb":   cmdb,
-	"cc":   cmdc,
-	"ls":   ls, // THIS CURRENTLY DUMPS CORE!!!!! FIX IT!!!!
-	"quit": exit,
+// usage - list usage of available commands
+func usage(g *gocui.Gui, args []string, cmds Viewinfo) {
+	var cmd = map[string]string{
+		"ca [arg]...": "Command Example a",
+		"cb [arg]...": "Command Example b",
+		"cc [arg]...": "Command Example c",
+		"ls":          "History of commands entered",
+		"quit":        "Bye!",
+		"exit":        "Bye!",
+		"help":        "List of available commands",
+		"usage":       "List of available commands",
+	}
+	var s string
+	for c := range cmd {
+		s += fmt.Sprintf("%s - %s\n", c, cmd[c])
+	}
+	screen.Fprintln(g, "msg", "cyan_black", s)
 }
+
+/* ************************************************************************** */
 
 // Docmd -- Execute the command entered
 func Docmd(g *gocui.Gui, s string, cmds Viewinfo) {
@@ -76,9 +99,9 @@ func Docmd(g *gocui.Gui, s string, cmds Viewinfo) {
 	s = strings.TrimSpace(s)
 	vals := strings.Fields(s)
 	// Lookup the command and execute it
-	for c := range cmdhandler {
+	for c := range Cmdhandler {
 		if c == vals[0] {
-			fn, ok := cmdhandler[c]
+			fn, ok := Cmdhandler[c]
 			if ok {
 				fn(g, vals, cmds)
 				return

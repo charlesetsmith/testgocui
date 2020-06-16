@@ -252,13 +252,16 @@ var MaxX int
 // MaxY - Maximum screen Y Value
 var MaxY int
 
+// THe layout of the views. THere is a command "cmd" and message "msg" pane
+// above it. You type commands into "cmd" and outputs from the commands are sent to "msg"
+// Play around with the ratio to change size of each pane
 func layout(g *gocui.Gui) error {
 
 	var err error
 	var cmd *gocui.View
 	var msg *gocui.View
 
-	ratio := 4            // Ratio of cmd to err views
+	ratio := 4            // Ratio of cmd to msg views
 	MaxX, MaxY = g.Size() // Set the MaxX and MaxY to current size
 	// This is the command line input view -- cli inputs and return messages go here
 	if cmd, err = g.SetView("cmd", 0, MaxY-(MaxY/ratio)+1, MaxX-1, MaxY-1); err != nil {
@@ -274,7 +277,7 @@ func layout(g *gocui.Gui) error {
 		cmd.Overwrite = true
 		cmd.Wrap = true
 	}
-	// This is the message view window - All sorts of status & error messages go here
+	// This is the message view view -- All sorts of status & error messages go here
 	if msg, err = g.SetView("msg", 0, 0, MaxX-1, MaxY-MaxY/ratio); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
@@ -309,10 +312,9 @@ func layout(g *gocui.Gui) error {
 // Main
 func main() {
 
-	// cli.Cinfo = &Cinfo
-
+	// The prompt for the command view
 	Cinfo.Prompt = "testgocui"
-	Cinfo.Ppad = 3 // len("[]:") // For []: in chars in the prompt e.g. "test[5]:"
+	Cinfo.Ppad = 3 // len("[]:") // For []: in chars in the prompt e.g. "gocui[5]:"
 
 	// Set up the gocui interface and start the mainloop
 	g, err := gocui.NewGui(gocui.OutputNormal)

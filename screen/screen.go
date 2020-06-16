@@ -59,15 +59,6 @@ var bg = map[string]string{
 	*/
 }
 
-// Viewinfo -- Data and info on view
-type Viewinfo struct {
-	Commands []string
-	Prompt   string
-	Ppad     int // Number of pad characters around prompt e.g. prompt[99]: would be 3
-	Curline  int
-	Numlines int
-}
-
 // Create ansi sequence for colour change with c format of fg_bg (e.g. red_black)
 func setcolour(c string) string {
 
