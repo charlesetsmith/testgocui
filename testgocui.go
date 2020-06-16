@@ -15,15 +15,15 @@ import (
 )
 
 // Cinfo - Information held on the cmd view
-var Cinfo screen.Viewinfo
+var Cinfo cli.Viewinfo
 
 // Minfo - Information held on the msg view
-var Minfo screen.Viewinfo
+var Minfo cli.Viewinfo
 
 // *******************************************************************
 
 // Return the length of the prompt
-func promptlen(v screen.Viewinfo) int {
+func promptlen(v cli.Viewinfo) int {
 	return len(v.Prompt) + len(strconv.Itoa(v.Curline)) + v.Ppad
 }
 
@@ -158,10 +158,10 @@ func getLine(g *gocui.Gui, v *gocui.View) error {
 	}
 	Cinfo.Commands = append(Cinfo.Commands, command[1])
 
-	go func(*gocui.Gui, string) {
+	go func(*gocui.Gui, string, cli.Viewinfo) {
 		// defer Sarwg.Done()
-		cli.Docmd(g, command[1])
-	}(g, command[1])
+		cli.Docmd(g, command[1], Cinfo)
+	}(g, command[1], Cinfo)
 
 	if command[1] == "exit" || command[1] == "quit" {
 		// Sarwg.Wait()
