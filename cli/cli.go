@@ -70,7 +70,8 @@ func exit(g *gocui.Gui, args []string, cmds Viewinfo) {
 
 // usage - list usage of available commands
 func usage(g *gocui.Gui, args []string, cmds Viewinfo) {
-	var cmd = map[string]string{
+	// Usage and description map of each command
+	var help = map[string]string{
 		"ca [arg]...": "Command Example a",
 		"cb [arg]...": "Command Example b",
 		"cc [arg]...": "Command Example c",
@@ -81,8 +82,8 @@ func usage(g *gocui.Gui, args []string, cmds Viewinfo) {
 		"usage":       "List of available commands",
 	}
 	var s string
-	for c := range cmd {
-		s += fmt.Sprintf("%s - %s\n", c, cmd[c])
+	for idx := range help {
+		s += fmt.Sprintf("%s - %s\n", idx, help[idx])
 	}
 	screen.Fprintln(g, "msg", "cyan_black", s)
 }
