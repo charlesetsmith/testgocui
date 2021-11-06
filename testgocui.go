@@ -15,129 +15,143 @@ import (
 )
 
 // Cinfo - Information held on the cmd view
-var Cinfo cli.Viewinfo
-
-// Minfo - Information held on the msg view
-var Minfo cli.Viewinfo
+var Cinfo cli.Cmdinfo
 
 // *******************************************************************
 
-// Return the length of the prompt
-func promptlen(v cli.Viewinfo) int {
-	return len(v.Prompt) + len(strconv.Itoa(v.Curline)) + v.Ppad
+// Place a "packet" on top of the others if it is to be shown.
+func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
+	if _, err := g.SetCurrentView(name); err != nil {
+		return nil, err
+	}
+	_, err := g.SetViewOnTop(name)
+	if showpacket {
+		g.SetViewOnTop("packet")
+	}
+	return nil, err
 }
 
-// Change view between "cmd" and "msg" window
+// Rotate through the views - CtrlSpace
+// only show packet view if it is enabled
 func switchView(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("switchView - g or v is nil")
-	}
 	var err error
+	var view string
 
-	if v.Name() == "cmd" {
-		v, err = g.SetCurrentView("msg")
-	} else {
-		v, err = g.SetCurrentView("cmd")
+	switch v.Name() {
+	case "cmd":
+		view = "msg"
+	case "msg":
+		if showpacket {
+			view = "packet"
+		} else {
+			view = "err"
+		}
+	case "err":
+		view = "cmd"
+	case "packet":
+		view = "err"
 	}
-	return err
+	if _, err = setCurrentViewOnTop(g, view); err != nil {
+		return err
+	}
+	return nil
 }
 
-// Backspace or Delete
+// Backspace or Delete -- All good
 func backSpace(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("backSpace - g or v is nil")
-	}
-	cx, _ := v.Cursor()
-	if cx <= promptlen(Cinfo) { // Dont move we are at the prompt
+	switch v.Name() {
+	case "cmd":
+		cx, _ := v.Cursor()
+		if cx <= promptlen(Cinfo) { // Dont move we are at the prompt
+			return nil
+		}
+		// Delete rune backwards
+		v.EditDelete(true)
+	case "msg", "packet":
 		return nil
 	}
-	// Delete rune backwards
-	v.EditDelete(true)
 	return nil
 }
 
 // Handle Left Arrow Move -- All good
 func cursorLeft(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("cursorLeft - g or v is nil")
-	}
-	cx, cy := v.Cursor()
-	if cx <= promptlen(Cinfo) { // Dont move
+	switch v.Name() {
+	case "cmd":
+		cx, cy := v.Cursor()
+		if cx <= promptlen(Cinfo) { // Dont move we are at the prompt
+			return nil
+		}
+		// Move back a character
+		if err := v.SetCursor(cx-1, cy); err != nil {
+			screen.ErrPrintln(g, "white_black", v.Name(), "LeftArrow:", "cx=", cx, "cy=", cy, "error=", err)
+		}
+	case "msg", "packet":
 		return nil
-	}
-	// Move back a character
-	if err := v.SetCursor(cx-1, cy); err != nil {
-		screen.Fprintln(g, "msg", "bwhite_black", "LeftArrow:", "cx=", cx, "cy=", cy, "error=", err)
 	}
 	return nil
 }
 
 // Handle Right Arrow Move - All good
 func cursorRight(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("cursorRight - g or v is nil")
-	}
-	cx, cy := v.Cursor()
-	line, _ := v.Line(cy)
-	if cx >= len(line)-1 { // We are at the end of line do nothing
-		v.SetCursor(len(line), cy)
+	switch v.Name() {
+	case "cmd":
+		cx, cy := v.Cursor()
+		line, _ := v.Line(cy)
+		if cx >= len(line)-1 { // We are at the end of line do nothing
+			v.SetCursor(len(line), cy)
+			return nil
+		}
+		// Move forward a character
+		if err := v.SetCursor(cx+1, cy); err != nil {
+			screen.ErrPrintln(g, "white_red", "RightArrow:", "cx=", cx, "cy=", cy, "error=", err)
+		}
+	case "msg", "packet":
 		return nil
-	}
-	// Move forward a character
-	if err := v.SetCursor(cx+1, cy); err != nil {
-		screen.Fprintln(g, "msg", "bwhite_red", "RightArrow:", "cx=", cx, "cy=", cy, "error=", err)
 	}
 	return nil
 }
 
 // Handle down cursor -- All good!
-// well not quite, still issue if we scroll down before hitting return
 func cursorDown(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("cursorDown - g or v is nil")
-	}
-	_, oy := v.Origin()
+	ox, oy := v.Origin()
 	cx, cy := v.Cursor()
-
 	// Don't move down if we are at the last line in current views Bufferlines
-	if oy+cy >= len(v.BufferLines())-1 {
+	if oy+cy == len(v.BufferLines())-1 {
+		screen.ErrPrintf(g, "white_black", "%s Down oy=%d cy=%d lines=%d\n",
+			v.Name(), oy, cy, len(v.BufferLines()))
 		return nil
 	}
-	err := v.SetCursor(cx, cy+1)
-	if err != nil { // Reset the origin
-		if err := v.SetOrigin(0, oy+1); err != nil { // changed ox to 0
-			screen.Fprintf(g, "msg", "bwhite_red", "SetOrigin error=%s", err)
+	if err := v.SetCursor(cx, cy+1); err != nil {
+		screen.ErrPrintf(g, "magenta_black", "%s Down oy=%d cy=%d lines=%d err=%s\n",
+			v.Name(), oy, cy, len(v.BufferLines()), err.Error())
+		// ox, oy = v.Origin()
+		if err := v.SetOrigin(ox, oy+1); err != nil {
+			screen.ErrPrintf(g, "cyan_black", "%s Down oy=%d cy=%d lines=%d err=%s\n",
+				v.Name(), oy, cy, len(v.BufferLines()), err.Error())
 			return err
 		}
-
 	}
-	// Move the cursor to the end of the current line
-	_, cy = v.Cursor()
-	if line, err := v.Line(cy); err == nil {
-		v.SetCursor(len(line), cy)
-	}
+	screen.ErrPrintf(g, "green_black", "%s Down oy=%d cy=%d lines=%d\n",
+		v.Name(), oy, cy, len(v.BufferLines()))
 	return nil
 }
 
-// Handle up cursor -- All good!
+// Whhy don't we scroll up!!!
 func cursorUp(g *gocui.Gui, v *gocui.View) error {
-	if g == nil || v == nil {
-		log.Fatal("cursorUp - g or v is nil")
-	}
-	_, oy := v.Origin()
+	ox, oy := v.Origin()
 	cx, cy := v.Cursor()
-	err := v.SetCursor(cx, cy-1)
-	if err != nil && oy > 0 { // Reset the origin
-		if err := v.SetOrigin(0, oy-1); err != nil { // changed ox to 0
-			screen.Fprintf(g, "msg", "bwhite_red", "SetOrigin error=%s", err)
+	if err := v.SetCursor(cx, cy-1); err != nil { // && oy > 0 {
+		screen.ErrPrintf(g, "magenta_black", "%s Up oy=%d cy=%d lines=%d err=%s\n",
+			v.Name(), oy, cy, len(v.BufferLines()), err.Error())
+		if err := v.SetOrigin(ox, oy-1); err != nil {
+			screen.ErrPrintf(g, "cyan_black", "%s Up oy=%d cy=%d lines=%d err=%s\n",
+				v.Name(), oy, cy, len(v.BufferLines()), err.Error())
 			return err
 		}
 	}
-	// Move the cursor to the end of the current line
 	_, cy = v.Cursor()
-	if line, err := v.Line(cy); err == nil {
-		v.SetCursor(len(line), cy)
-	}
+	screen.ErrPrintf(g, "green_black", "%s Up oy=%d cy=%d lines=%d\n",
+		v.Name(), oy, cy, len(v.BufferLines()))
 	return nil
 }
 
@@ -146,53 +160,37 @@ func getLine(g *gocui.Gui, v *gocui.View) error {
 	if g == nil || v == nil {
 		log.Fatal("getLine - g or v is nil")
 	}
-	// Find out where we are
-	_, cy := v.Cursor()
-	// Get the line
-	line, _ := v.Line(cy)
-	// screen.Fprintf(g, "msg", "red_black", "cx=%d cy=%d lines=%d line=%s\n",
-	//	len(v.BufferLines()), cx, cy, line)
-	command := strings.SplitN(line, ":", 2)
-	if command[1] == "" { // We have just hit enter - do nothing
-		return nil
-	}
-	Cinfo.Commands = append(Cinfo.Commands, command[1])
+	switch v.Name() {
+	case "cmd":
+		// c := &Cinfo
+		// Find out where we are
+		_, cy := v.Cursor()
+		// Get the line
+		line, _ := v.Line(cy)
 
-	go func(*gocui.Gui, string, cli.Viewinfo) {
-		// defer Sarwg.Done()
-		cli.Docmd(g, command[1], Cinfo)
-	}(g, command[1], Cinfo)
-
-	if command[1] == "exit" || command[1] == "quit" {
-		// Sarwg.Wait()
-		err := quit(g, v)
-		// THIS IS A KLUDGE FIX IT WITH A CHANNEL
-		log.Fatal("\nGocui Exit. Bye!", err)
-	}
-
-	// Bump the number of the current line
-	Cinfo.Curline++
-	// Our new x position will always be after the prompt + 3 for []: chars
-	xpos := promptlen(Cinfo)
-	// Have we scrolled past the length of v, if so reset the origin
-
-	if err := v.SetCursor(xpos, cy+1); err != nil {
-		// screen.Fprintln(g, "msg", "red_black", "We Scrolled past length of v", err)
-		_, oy := v.Origin()
-		// screen.Fprintf(g, "msg", "red_black", "Origin reset ox=%d oy=%d\n", ox, oy)
-		if err := v.SetOrigin(0, oy+1); err != nil { // changed xpos to 0
-			// screen.Fprintln(g, "msg", "red_black", "SetOrigin Error:", err)
-			return err
+		command := strings.SplitN(line, ":", 2)
+		if command[1] == "" { // We have just hit enter - do nothing
+			return nil
 		}
-		// Set the cursor to last line in v
-		if verr := v.SetCursor(xpos, cy); verr != nil {
-			screen.Fprintln(g, "msg", "bwite_red", "Setcursor out of bounds:", verr)
+		// Save the command into history
+		Cinfo.Commands = append(Cinfo.Commands, command[1])
+
+		// Spawn a go to run the command
+		go func(*gocui.Gui, string) {
+			// defer Sarwg.Done()
+			cli.Docmd(g, command[1], Cinfo)
+		}(g, command[1])
+
+		if command[1] == "exit" || command[1] == "quit" {
+			// Sarwg.Wait()
+			err := quit(g, v)
+			// THIS IS A KLUDGE FIX IT WITH A CHANNEL
+			log.Fatal("\nGocui Exit. Bye!\n", err)
 		}
-		// cx, cy := v.Cursor()
-		// screen.Fprintf(g, "msg", "red_black", "cx=%d cy=%d line=%s\n", cx, cy, line)
+		prompt(g, v)
+	case "msg", "packet", "err":
+		return cursorDown(g, v)
 	}
-	// Put up the new prompt on the next line
-	screen.Fprintf(g, "cmd", "yellow_black", "\n%s[%d]:", Cinfo.Prompt, Cinfo.Curline)
 	return nil
 }
 
@@ -200,42 +198,92 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-func keybindings(g *gocui.Gui) error {
-	if err := g.SetKeybinding("cmd", gocui.KeyCtrlSpace, gocui.ModNone, switchView); err != nil {
-		return err
-	}
+// ShowPacket - Show Packet trace info
+var showpacket bool = false
 
-	if err := g.SetKeybinding("cmd", gocui.KeyArrowDown, gocui.ModNone, cursorDown); err != nil {
+// Turn on/off the Packet View
+func showPacket(g *gocui.Gui, v *gocui.View) error {
+	var err error
+
+	if g == nil || v == nil {
+		log.Fatal("showPacket g is nil")
+	}
+	showpacket = !showpacket
+	if showpacket {
+		_, err = g.SetViewOnTop("packet")
+	} else {
+		_, err = g.SetViewOnTop("msg")
+	}
+	return err
+}
+
+// Bind keys to function handlers
+func keybindings(g *gocui.Gui) error {
+	if err := g.SetKeybinding("", gocui.KeyCtrlSpace, gocui.ModNone, switchView); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyArrowUp, gocui.ModNone, cursorUp); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone, cursorDown); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyArrowLeft, gocui.ModNone, cursorLeft); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, cursorUp); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyArrowLeft, gocui.ModNone, cursorLeft); err != nil {
 		return nil
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyArrowRight, gocui.ModNone, cursorRight); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone, cursorRight); err != nil {
 		return nil
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("cmd", gocui.KeyEnter, gocui.ModNone, getLine); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, getLine); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("cmd", gocui.KeyBackspace, gocui.ModNone, backSpace); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyCtrlP, gocui.ModNone, showPacket); err != nil {
 		return nil
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyBackspace2, gocui.ModNone, backSpace); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyEnter, gocui.ModNone, getLine); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyBackspace, gocui.ModNone, backSpace); err != nil {
 		return nil
 	}
-	if err := g.SetKeybinding("cmd", gocui.KeyDelete, gocui.ModNone, backSpace); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyBackspace2, gocui.ModNone, backSpace); err != nil {
+		return nil
+	}
+	if err := g.SetKeybinding("", gocui.KeyDelete, gocui.ModNone, backSpace); err != nil {
 		return nil
 	}
 	return nil
+}
+
+// Return the length of the prompt
+func promptlen(v cli.Cmdinfo) int {
+	return len(v.Prompt) + len(strconv.Itoa(v.Curline)) + v.Ppad
+}
+
+// Display the prompt
+func prompt(g *gocui.Gui, v *gocui.View) {
+	if g == nil || v == nil || v.Name() != "cmd" {
+		log.Fatal("prompt must be in cmd view")
+	}
+	_, oy := v.Origin()
+	_, cy := v.Cursor()
+	// Only display it if it is on the next new line
+	if oy+cy == Cinfo.Curline {
+		if FirstPass { // Just the prompt no precedin \n as we are the first line
+			screen.CmdPrintf(g, "yellow_black", "%s[%d]:", Cinfo.Prompt, Cinfo.Curline)
+			v.SetCursor(promptlen(Cinfo), cy)
+		} else { // End the last command by going to new lin \n then put up the new prompt
+			Cinfo.Curline++
+			screen.CmdPrintf(g, "yellow_black", "\n%s[%d]:", Cinfo.Prompt, Cinfo.Curline)
+			_, cy := v.Cursor()
+			v.SetCursor(promptlen(Cinfo), cy)
+			if err := cursorDown(g, v); err != nil {
+				screen.MsgPrintln(g, "red_black", "Cannot move to next line")
+			}
+			_, cy = v.Cursor()
+			v.SetCursor(promptlen(Cinfo), cy+1)
+		}
+	}
 }
 
 // FirstPass -- First time around layout we don;t put \n at end of prompt
@@ -252,20 +300,18 @@ var MaxX int
 // MaxY - Maximum screen Y Value
 var MaxY int
 
-// THe layout of the views. THere is a command "cmd" and message "msg" pane
-// above it. You type commands into "cmd" and outputs from the commands are sent to "msg"
-// Play around with the ratio to change size of each pane
 func layout(g *gocui.Gui) error {
-
 	var err error
 	var cmd *gocui.View
 	var msg *gocui.View
+	var packet *gocui.View
 
-	ratio := 4            // Ratio of cmd to msg views
-	MaxX, MaxY = g.Size() // Set the MaxX and MaxY to current size
+	ratio := 4 // Ratio of cmd to msg views
+
+	// Maximum size of x and y
+	maxx, maxy := g.Size()
 	// This is the command line input view -- cli inputs and return messages go here
-	if cmd, err = g.SetView("cmd", 0, MaxY-(MaxY/ratio)+1, MaxX-1, MaxY-1); err != nil {
-		CmdLines = (MaxY / ratio) - 3 // Number of input lines in cmd view
+	if cmd, err = g.SetView("cmd", 0, maxy-(maxy/ratio)+1, maxx/2-1, maxy-1); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -276,9 +322,40 @@ func layout(g *gocui.Gui) error {
 		cmd.Editable = true
 		cmd.Overwrite = true
 		cmd.Wrap = true
+		cmd.Autoscroll = true
 	}
-	// This is the message view view -- All sorts of status & error messages go here
-	if msg, err = g.SetView("msg", 0, 0, MaxX-1, MaxY-MaxY/ratio); err != nil {
+	// This is the error msg view -- mic errors go here
+	if cmd, err = g.SetView("err", maxx/2, maxy-(maxy/ratio)+1, maxx-1, maxy-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		cmd.Title = "Errors"
+		cmd.Highlight = false
+		cmd.BgColor = gocui.ColorBlack
+		cmd.FgColor = gocui.ColorGreen
+		cmd.Editable = false
+		cmd.Overwrite = false
+		cmd.Wrap = true
+		cmd.Autoscroll = true
+	}
+	// This is the packet trace window - packet trace history goes here
+	// Toggles on/off with CtrlP
+	if packet, err = g.SetView("packet", maxx-maxx/4, 1, maxx-2, maxy-maxy/ratio-1); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		packet.Title = "Packets"
+		packet.Highlight = false
+		packet.BgColor = gocui.ColorBlack
+		packet.FgColor = gocui.ColorMagenta
+		packet.Editable = false
+		packet.Wrap = true
+		packet.Overwrite = false
+		packet.Autoscroll = true
+	}
+
+	// This is the message view window - Status & error messages go here
+	if msg, err = g.SetView("msg", 0, 0, maxx-1, maxy-maxy/ratio); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -292,18 +369,16 @@ func layout(g *gocui.Gui) error {
 		msg.Autoscroll = true
 	}
 
-	// All inputs happen via the cmd view
-	if cmd, err = g.SetCurrentView("cmd"); err != nil {
-		return err
-	}
-
 	// Display the prompt without the \n first time around
 	if FirstPass {
+		// All inputs happen via the cmd view
+		if cmd, err = g.SetCurrentView("cmd"); err != nil {
+			return err
+		}
 		cmd.SetCursor(0, 0)
-		xpos := promptlen(Cinfo)
 		Cinfo.Curline = 0
-		screen.Fprintf(g, "cmd", "yellow_black", "%s[%d]:", Cinfo.Prompt, Cinfo.Curline)
-		cmd.SetCursor(xpos, 0)
+		cmdv, _ := g.View("cmd")
+		prompt(g, cmdv)
 		FirstPass = false
 	}
 	return nil
@@ -334,11 +409,14 @@ func main() {
 	errflag := make(chan error, 1)
 	go mainloop(g, errflag)
 
-	select {
-	case err := <-errflag:
-		fmt.Println("Mainloop has quit:", err.Error())
-	}
-	return
+	err = <-errflag
+	fmt.Println("Mainloop has quit with error", err.Error())
+	/*
+		select {
+		case err := <-errflag:
+			fmt.Println("Mainloop has quit:", err.Error())
+		}
+	*/
 }
 
 // Go routine for command line loop

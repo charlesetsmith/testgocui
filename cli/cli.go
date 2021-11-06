@@ -10,8 +10,8 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-// Viewinfo - Previos Command history, prompt info
-type Viewinfo struct {
+// Cmdinfo - Previos Command history, prompt info
+type Cmdinfo struct {
 	Commands []string
 	Prompt   string
 	Ppad     int // Number of pad characters around prompt e.g. prompt[99]: would be 3
@@ -19,7 +19,7 @@ type Viewinfo struct {
 	// Numlines int
 }
 
-type cmdfunc func(*gocui.Gui, []string, Viewinfo)
+type cmdfunc func(*gocui.Gui, []string, Cmdinfo)
 
 // Cmdhandler - Commands and function pointers to handle them
 var Cmdhandler = map[string]cmdfunc{
@@ -36,22 +36,22 @@ var Cmdhandler = map[string]cmdfunc{
 // The different command line input handlers
 
 // cmda [args]...
-func cmda(g *gocui.Gui, args []string, cmds Viewinfo) {
+func cmda(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command A", args)
 }
 
 // cmdb [args]...
-func cmdb(g *gocui.Gui, args []string, cmds Viewinfo) {
+func cmdb(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command B", args)
 }
 
 // cmdc [args]...
-func cmdc(g *gocui.Gui, args []string, cmds Viewinfo) {
+func cmdc(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	screen.Fprintln(g, "msg", "green_black", "Command B", args)
 }
 
 // ls - list the history of commands to the msg window
-func ls(g *gocui.Gui, args []string, cmds Viewinfo) {
+func ls(g *gocui.Gui, args []string, cmds Cmdinfo) {
 
 	var s string
 	for c := range cmds.Commands {
@@ -61,7 +61,7 @@ func ls(g *gocui.Gui, args []string, cmds Viewinfo) {
 }
 
 // Quit saratoga
-func exit(g *gocui.Gui, args []string, cmds Viewinfo) {
+func exit(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	if len(args) == 1 { // exit 0
 		screen.Fprintln(g, "msg", "green_black", "Gocui Good Bye!")
 		return
@@ -69,7 +69,7 @@ func exit(g *gocui.Gui, args []string, cmds Viewinfo) {
 }
 
 // usage - list usage of available commands
-func usage(g *gocui.Gui, args []string, cmds Viewinfo) {
+func usage(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	// Usage and description map of each command
 	var help = map[string]string{
 		"ca [arg]...": "Command Example a",
@@ -91,7 +91,7 @@ func usage(g *gocui.Gui, args []string, cmds Viewinfo) {
 /* ************************************************************************** */
 
 // Docmd -- Execute the command entered
-func Docmd(g *gocui.Gui, s string, cmds Viewinfo) {
+func Docmd(g *gocui.Gui, s string, cmds Cmdinfo) {
 	if s == "" { // Handle just return
 		return
 	}

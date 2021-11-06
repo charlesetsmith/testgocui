@@ -19,26 +19,38 @@ var ansioff = "0" // "\033[0m"
 
 // Foreground colours (b=bright)
 var fg = map[string]string{
-	"black":    "30",
-	"red":      "31",
-	"green":    "32",
-	"yellow":   "33",
-	"blue":     "34",
-	"magenta":  "35",
-	"cyan":     "36",
-	"white":    "37",
-	"bblack":   "30;1",
-	"bred":     "31;1",
-	"bgreen":   "32;1",
-	"byellow":  "33;1",
-	"bblue":    "34;1",
-	"bmagenta": "35;1",
-	"bcyan":    "36;1",
-	"bwhite":   "37;1",
+	// Normal
+	"black":   "30;1",
+	"red":     "31;1",
+	"green":   "32;1",
+	"yellow":  "33;1",
+	"blue":    "34;1",
+	"magenta": "35;1",
+	"cyan":    "36;1",
+	"white":   "37;1",
+	// Underlined
+	"ublack":   "30;4",
+	"ured":     "31;4",
+	"ugreen":   "32;4",
+	"uyellow":  "33;4",
+	"ublue":    "34;4",
+	"umagenta": "35;4",
+	"ucyan":    "36;4",
+	"uwhite":   "37;4",
+	// Invert
+	"iblack":   "30;7",
+	"ired":     "31;7",
+	"igreen":   "32;7",
+	"iyellow":  "33;7",
+	"iblue":    "34;7",
+	"imagenta": "35;7",
+	"icyan":    "36;7",
+	"iwhite":   "37;7",
 }
 
 // Background Colours (b=bright)
 var bg = map[string]string{
+	// Normal background
 	"black":   "40",
 	"red":     "41",
 	"green":   "42",
@@ -47,16 +59,24 @@ var bg = map[string]string{
 	"magenta": "45",
 	"cyan":    "46",
 	"white":   "47",
-	/* These do not work, they should
-	"bblack":   "100",
-	"bred":     "101",
-	"bgreen":   "102",
-	"byellow":  "103",
-	"bblue":    "104",
-	"bmagenta": "105",
-	"bcyan":    "016",
-	"bwhite":   "107",
-	*/
+	// Bright background (this just makes foreground lighter)
+	"bblack":   "40;1",
+	"bred":     "41;1",
+	"bgreen":   "42;1",
+	"byellow":  "43;1",
+	"bblue":    "44;1",
+	"bmagenta": "45;1",
+	"bcyan":    "46;1",
+	"bwhite":   "47;1",
+}
+
+// Viewinfo -- Data and info on views (cmd & msg)
+type Cmdinfo struct {
+	Commands []string // History of commands
+	Prompt   string   // Command line prompt prefix
+	Curline  int      // What is my current line #
+	Ppad     int      // Number of pad characters around prompt e.g. prompt[99]: would be 3 for the []:
+	Numlines int      // How many lines do we have
 }
 
 // Create ansi sequence for colour change with c format of fg_bg (e.g. red_black)
@@ -123,4 +143,44 @@ func Fprintln(g *gocui.Gui, vname string, colour string, args ...interface{}) {
 		fmt.Fprintf(v, "%s", setcolour("off"))
 		return nil
 	})
+}
+
+// Send formatted output to "msg"  window
+func MsgPrintf(g *gocui.Gui, colour string, format string, args ...interface{}) {
+	Fprintf(g, "msg", colour, format, args...)
+}
+
+// Send unformatted output to "msg" window
+func MsgPrintln(g *gocui.Gui, colour string, args ...interface{}) {
+	Fprintln(g, "msg", colour, args...)
+}
+
+// Send formatted output to "cmd" window
+func CmdPrintf(g *gocui.Gui, colour string, format string, args ...interface{}) {
+	Fprintf(g, "cmd", colour, format, args...)
+}
+
+// Send unformatted output to "cmd" window
+func CmdPrintln(g *gocui.Gui, colour string, args ...interface{}) {
+	Fprintln(g, "cmd", colour, args...)
+}
+
+// Send formatted output to "err" window
+func ErrPrintf(g *gocui.Gui, colour string, format string, args ...interface{}) {
+	Fprintf(g, "err", colour, format, args...)
+}
+
+// Send unformatted output to "err" window
+func ErrPrintln(g *gocui.Gui, colour string, args ...interface{}) {
+	Fprintln(g, "err", colour, args...)
+}
+
+// Send formatted output to "cmd" window
+func PacketPrintf(g *gocui.Gui, colour string, format string, args ...interface{}) {
+	Fprintf(g, "packet", colour, format, args...)
+}
+
+// Send unformatted output to "cmd" window
+func PacketPrintln(g *gocui.Gui, colour string, args ...interface{}) {
+	Fprintln(g, "packet", colour, args...)
 }
