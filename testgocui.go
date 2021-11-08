@@ -380,10 +380,17 @@ func layout(g *gocui.Gui) error {
 		if cmd, err = g.SetCurrentView("cmd"); err != nil {
 			return err
 		}
+		g.Cursor = true
+		g.Highlight = true
+		g.SelFgColor = gocui.ColorRed
+		g.SelBgColor = gocui.ColorWhite
 		cmd.SetCursor(0, 0)
 		Cinfo.Curline = 0
 		prompt(g, cmd)
 		FirstPass = false
+		screen.MsgPrintln(g, "white_black", "CtrlSpace - Rotate between views")
+		screen.MsgPrintln(g, "white_black", "CtrlP - Show/Hide Packet view")
+		screen.MsgPrintln(g, "white_black", "? for help")
 	}
 	return nil
 }
@@ -403,7 +410,6 @@ func main() {
 	}
 	defer g.Close()
 
-	g.Cursor = true
 	g.SetManagerFunc(layout)
 	if err := keybindings(g); err != nil {
 		log.Panicln(err)
