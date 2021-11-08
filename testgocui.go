@@ -67,7 +67,7 @@ func backSpace(g *gocui.Gui, v *gocui.View) error {
 		}
 		// Delete rune backwards
 		v.EditDelete(true)
-	case "msg", "packet":
+	case "msg", "packet", "err":
 		return nil
 	}
 	return nil
@@ -296,7 +296,6 @@ func prompt(g *gocui.Gui, v *gocui.View) {
 var FirstPass = true
 
 // For working out screen positions in cli i/o
-
 // CmdLines - Number of lines in Cmd View
 var CmdLines int
 
@@ -377,14 +376,13 @@ func layout(g *gocui.Gui) error {
 
 	// Display the prompt without the \n first time around
 	if FirstPass {
-		// All inputs happen via the cmd view
+		// All inputs happen via the cmd view and go there to start
 		if cmd, err = g.SetCurrentView("cmd"); err != nil {
 			return err
 		}
 		cmd.SetCursor(0, 0)
 		Cinfo.Curline = 0
-		cmdv, _ := g.View("cmd")
-		prompt(g, cmdv)
+		prompt(g, cmd)
 		FirstPass = false
 	}
 	return nil
