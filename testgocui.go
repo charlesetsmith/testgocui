@@ -15,7 +15,7 @@ import (
 )
 
 // Cinfo - Information held on the cmd view
-var Cinfo cli.Cmdinfo
+var Cinfo cli.Cmdhist
 
 // *******************************************************************
 
@@ -262,7 +262,7 @@ func keybindings(g *gocui.Gui) error {
 }
 
 // Return the length of the prompt
-func promptlen(v cli.Cmdinfo) int {
+func promptlen(v cli.Cmdhist) int {
 	return len(v.Prompt) + len(strconv.Itoa(v.Curline)) + v.Ppad
 }
 
