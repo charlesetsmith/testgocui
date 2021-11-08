@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/jroimartin/gocui"
 )
@@ -15,7 +16,7 @@ import (
 var ansiprefix = "\033["
 var ansipostfix = "m"
 var ansiseparator = ";"
-var ansioff = "0" // "\033[0m"
+var ansioff = "\033[0m" // Turn ansii escapesequence off
 
 // Foreground colours (b=bright)
 var fg = map[string]string{
@@ -51,24 +52,27 @@ var fg = map[string]string{
 // Background Colours (b=bright)
 var bg = map[string]string{
 	// Normal background
-	"black":   "40",
-	"red":     "41",
-	"green":   "42",
-	"yellow":  "43",
-	"blue":    "44",
-	"magenta": "45",
-	"cyan":    "46",
-	"white":   "47",
+	"black":   "40;1",
+	"red":     "41;1",
+	"green":   "42;1",
+	"yellow":  "43;1",
+	"blue":    "44;1",
+	"magenta": "45;1",
+	"cyan":    "46;1",
+	"white":   "47;1",
 	// Bright background (this just makes foreground lighter)
-	"bblack":   "40;1",
-	"bred":     "41;1",
-	"bgreen":   "42;1",
-	"byellow":  "43;1",
-	"bblue":    "44;1",
-	"bmagenta": "45;1",
-	"bcyan":    "46;1",
-	"bwhite":   "47;1",
+	"bblack":   "40;4",
+	"bred":     "41;4",
+	"bgreen":   "42;4",
+	"byellow":  "43;4",
+	"bblue":    "44;4",
+	"bmagenta": "45;4",
+	"bcyan":    "46;4",
+	"bwhite":   "47;4",
 }
+
+// Ensure multiple prints to screen don't interfere with eachother
+var ScreenMu sync.Mutex
 
 // Viewinfo -- Data and info on views (cmd & msg)
 type Cmdinfo struct {
@@ -80,36 +84,47 @@ type Cmdinfo struct {
 }
 
 // Create ansi sequence for colour change with c format of fg_bg (e.g. red_black)
-func setcolour(c string) string {
+func setcolour(colour string) string {
 
-	var fgok bool
-	var bgok bool
+	var fgok bool = false
+	var bgok bool = false
 
-	if c == "off" {
-		return ansiprefix + ansioff + ansipostfix
+	if colour == "none" || colour == "" {
+		return ""
 	}
-	sequence := strings.Split(c, "_")
+	if colour == "off" {
+		return ansioff
+	}
+	sequence := strings.Split(colour, "_")
 
 	// CHeck that the colors are OK
 	if len(sequence) == 2 {
-		for c := range fg {
-			if sequence[0] == c {
-				fgok = true
-				break
-			}
+		if fg[sequence[0]] != "" {
+			fgok = true
 		}
-		for c := range bg {
-			if sequence[1] == c {
-				bgok = true
-				break
+		/*
+			for c := range fg {
+				if sequence[0] == c {
+					fgok = true
+					break
+				}
 			}
+			for c := range bg {
+				if sequence[1] == c {
+					bgok = true
+					break
+				}
+			}
+		*/
+		if bg[sequence[1]] != "" {
+			bgok = true
 		}
 	}
 	if fgok && bgok {
 		return ansiprefix + fg[sequence[0]] + ansiseparator + bg[sequence[1]] + ansipostfix
 	}
 	// Error so make it jump out at us
-	return ansiprefix + fg["bwhite"] + ansiseparator + bg["red"] + ansipostfix
+	return ansiprefix + fg["white"] + ansiseparator + bg["red"] + ansipostfix
 }
 
 // Fprintf out in ANSII escape sequenace colour
@@ -117,13 +132,19 @@ func setcolour(c string) string {
 func Fprintf(g *gocui.Gui, vname string, colour string, format string, args ...interface{}) {
 
 	g.Update(func(g *gocui.Gui) error {
+		ScreenMu.Lock()
+		defer ScreenMu.Unlock()
 		v, err := g.View(vname)
 		if err != nil {
 			e := fmt.Sprintf("\nView Fprintf invalid view: %s", vname)
 			log.Fatal(e)
 		}
-		colfmt := setcolour(colour) + format + setcolour("off")
-		fmt.Fprintf(v, colfmt, args...)
+		s := setcolour(colour)
+		s += fmt.Sprintf(format, args...)
+		if colour != "" {
+			s += setcolour("off")
+		}
+		fmt.Fprint(v, s)
 		return nil
 	})
 }
@@ -133,14 +154,19 @@ func Fprintf(g *gocui.Gui, vname string, colour string, format string, args ...i
 func Fprintln(g *gocui.Gui, vname string, colour string, args ...interface{}) {
 
 	g.Update(func(g *gocui.Gui) error {
+		ScreenMu.Lock()
+		defer ScreenMu.Unlock()
 		v, err := g.View(vname)
 		if err != nil {
 			e := fmt.Sprintf("\nView Fprintln invalid view: %s", vname)
 			log.Fatal(e)
 		}
-		fmt.Fprintf(v, "%s", setcolour(colour))
-		fmt.Fprintln(v, args...)
-		fmt.Fprintf(v, "%s", setcolour("off"))
+		s := setcolour(colour)
+		s += fmt.Sprint(args...)
+		if colour != "" {
+			s += setcolour("off")
+		}
+		fmt.Fprintln(v, s)
 		return nil
 	})
 }

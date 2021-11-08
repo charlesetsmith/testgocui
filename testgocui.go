@@ -136,17 +136,23 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-// Whhy don't we scroll up!!!
+// Why don't we scroll up!!!
 func cursorUp(g *gocui.Gui, v *gocui.View) error {
 	ox, oy := v.Origin()
 	cx, cy := v.Cursor()
-	if err := v.SetCursor(cx, cy-1); err != nil { // && oy > 0 {
-		screen.ErrPrintf(g, "magenta_black", "%s Up oy=%d cy=%d lines=%d err=%s\n",
+	screen.ErrPrintf(g, "green_black", "%s Up ox=%d oy=%d cx=%d cy=%d lines=%d\n",
+		v.Name(), ox, oy, cx, cy, len(v.BufferLines()))
+	if err := v.SetCursor(cx, cy-1); err != nil && oy > 0 {
+		screen.ErrPrintf(g, "magenta_black", "%s SetCur Up oy=%d cy=%d lines=%d err=%s\n",
 			v.Name(), oy, cy, len(v.BufferLines()), err.Error())
 		if err := v.SetOrigin(ox, oy-1); err != nil {
-			screen.ErrPrintf(g, "cyan_black", "%s Up oy=%d cy=%d lines=%d err=%s\n",
-				v.Name(), oy, cy, len(v.BufferLines()), err.Error())
+			screen.ErrPrintf(g, "cyan_black", "%s SetOri Up oy=%d cy=%d lines=%d err=%s\n",
+				v.Name(), oy-1, cy, len(v.BufferLines()), err.Error())
 			return err
+		} else {
+			screen.ErrPrintf(g, "red_black", "%s SetOri Up oy=%d cy=%d lines=%d\n",
+				v.Name(), oy, cy, len(v.BufferLines()))
+			return nil
 		}
 	}
 	_, cy = v.Cursor()

@@ -26,6 +26,7 @@ var Cmdhandler = map[string]cmdfunc{
 	"ca":    cmda,
 	"cb":    cmdb,
 	"cc":    cmdc,
+	"buf":   cmdbuf,
 	"ls":    ls,
 	"quit":  exit,
 	"exit":  exit,
@@ -37,17 +38,17 @@ var Cmdhandler = map[string]cmdfunc{
 
 // cmda [args]...
 func cmda(g *gocui.Gui, args []string, cmds Cmdinfo) {
-	screen.Fprintln(g, "msg", "green_black", "Command A", args)
+	screen.MsgPrintln(g, "green_black", "Command A", args)
 }
 
 // cmdb [args]...
 func cmdb(g *gocui.Gui, args []string, cmds Cmdinfo) {
-	screen.Fprintln(g, "msg", "green_black", "Command B", args)
+	screen.MsgPrintln(g, "green_black", "Command B", args)
 }
 
 // cmdc [args]...
 func cmdc(g *gocui.Gui, args []string, cmds Cmdinfo) {
-	screen.Fprintln(g, "msg", "green_black", "Command B", args)
+	screen.MsgPrintln(g, "green_black", "Command B", args)
 }
 
 // ls - list the history of commands to the msg window
@@ -57,7 +58,14 @@ func ls(g *gocui.Gui, args []string, cmds Cmdinfo) {
 	for c := range cmds.Commands {
 		s += fmt.Sprintf("%d=%s\n", c, cmds.Commands[c])
 	}
-	screen.Fprintln(g, "msg", "cyan_black", s)
+	screen.MsgPrintln(g, "cyan_black", s)
+}
+
+func cmdbuf(g *gocui.Gui, args []string, cmds Cmdinfo) {
+	// var b string
+	v, _ := g.View("cmd")
+	s := v.Buffer()
+	screen.MsgPrintln(g, "", s)
 }
 
 // Quit saratoga
@@ -75,6 +83,7 @@ func usage(g *gocui.Gui, args []string, cmds Cmdinfo) {
 		"ca [arg]...": "Command Example a",
 		"cb [arg]...": "Command Example b",
 		"cc [arg]...": "Command Example c",
+		"buf":         "Show Buffer",
 		"ls":          "History of commands entered",
 		"quit":        "Bye!",
 		"exit":        "Bye!",
@@ -107,10 +116,9 @@ func Docmd(g *gocui.Gui, s string, cmds Cmdinfo) {
 				fn(g, vals, cmds)
 				return
 			}
-			screen.Fprintln(g, "msg", "bwhite_red", "Cannot execute:", vals[0])
+			screen.Fprintln(g, "msg", "red_black", "Cannot execute:", vals[0])
 			return
 		}
 	}
-	screen.Fprintln(g, "msg", "bwhite_red", "Invalid command:", vals[0])
-	return
+	screen.Fprintln(g, "msg", "red_black", "Invalid command:", vals[0])
 }
