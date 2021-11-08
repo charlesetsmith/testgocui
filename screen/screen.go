@@ -85,10 +85,6 @@ type Cmdinfo struct {
 
 // Create ansi sequence for colour change with c format of fg_bg (e.g. red_black)
 func setcolour(colour string) string {
-
-	var fgok bool = false
-	var bgok bool = false
-
 	if colour == "none" || colour == "" {
 		return ""
 	}
@@ -97,34 +93,21 @@ func setcolour(colour string) string {
 	}
 	sequence := strings.Split(colour, "_")
 
-	// CHeck that the colors are OK
-	if len(sequence) == 2 {
+	switch len(sequence) {
+	case 2:
+		if fg[sequence[0]] != "" && bg[sequence[1]] != "" {
+			return ansiprefix + fg[sequence[0]] + ansiseparator + bg[sequence[1]] + ansipostfix
+		}
+		return ansiprefix + fg["white"] + ansiseparator + bg["red"] + ansipostfix
+	case 1:
 		if fg[sequence[0]] != "" {
-			fgok = true
+			return ansiprefix + fg[sequence[0]] + ansiseparator + bg["black"] + ansipostfix
 		}
-		/*
-			for c := range fg {
-				if sequence[0] == c {
-					fgok = true
-					break
-				}
-			}
-			for c := range bg {
-				if sequence[1] == c {
-					bgok = true
-					break
-				}
-			}
-		*/
-		if bg[sequence[1]] != "" {
-			bgok = true
-		}
-	}
-	if fgok && bgok {
 		return ansiprefix + fg[sequence[0]] + ansiseparator + bg[sequence[1]] + ansipostfix
+	default:
+		// Error so make it jump out at us
+		return ansiprefix + fg["white"] + ansiseparator + bg["red"] + ansipostfix
 	}
-	// Error so make it jump out at us
-	return ansiprefix + fg["white"] + ansiseparator + bg["red"] + ansipostfix
 }
 
 // Fprintf out in ANSII escape sequenace colour
