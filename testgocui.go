@@ -31,6 +31,25 @@ func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
 	return nil, err
 }
 
+// Jump to the last row in a view
+func gotolastrow(g *gocui.Gui, v *gocui.View) {
+	ox, oy := v.Origin()
+	cx, cy := v.Cursor()
+
+	lines := len(v.BufferLines())
+	screen.ErrPrintf(g, "white_black", "gotolastrow ox=%d oy=%d cx=%d cy=%d blines=%d\n",
+		oy, oy, cx, cy, lines)
+	// Don't move down if we already are at the last line in current views Bufferlines
+	if oy+cy == lines-1 {
+		return
+	}
+	if err := v.SetCursor(cx, lines-1); err != nil {
+		_, sy := v.Size()
+		v.SetOrigin(ox, lines-sy-1)
+		v.SetCursor(cx, sy-1)
+	}
+}
+
 // Rotate through the views - CtrlSpace
 // only show packet view if it is enabled
 func switchView(g *gocui.Gui, v *gocui.View) error {
@@ -54,6 +73,7 @@ func switchView(g *gocui.Gui, v *gocui.View) error {
 	if _, err = setCurrentViewOnTop(g, view); err != nil {
 		return err
 	}
+	gotolastrow(g, v)
 	return nil
 }
 
