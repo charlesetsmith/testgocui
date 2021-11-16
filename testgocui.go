@@ -21,14 +21,17 @@ var Cinfo cli.Cmdhist
 
 // Place a "packet" on top of the others if it is to be shown.
 func setCurrentViewOnTop(g *gocui.Gui, name string) (*gocui.View, error) {
-	if _, err := g.SetCurrentView(name); err != nil {
-		return nil, err
+	var err error
+	var v *gocui.View
+
+	if v, err = g.SetCurrentView(name); err != nil {
+		return v, err
 	}
-	_, err := g.SetViewOnTop(name)
 	if showpacket {
-		g.SetViewOnTop("packet")
+		return g.SetViewOnTop("packet")
+	} else {
+		return g.SetViewOnTop(name)
 	}
-	return nil, err
 }
 
 // Jump to the last row in a view
